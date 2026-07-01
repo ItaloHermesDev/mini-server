@@ -1,6 +1,17 @@
 import { NextResponse } from "next/server";
 import { saveWebhookPayload } from "@/lib/db";
 
+function isMondayChallenge(
+  payload: unknown
+): payload is { challenge: string } {
+  return (
+    typeof payload === "object" &&
+    payload !== null &&
+    "challenge" in payload &&
+    typeof payload.challenge === "string"
+  );
+}
+
 export async function POST(request: Request) {
   let payload: unknown;
 
@@ -11,6 +22,12 @@ export async function POST(request: Request) {
       { success: false, error: "JSON inválido" },
       { status: 400 }
     );
+  }
+
+  // monday.com envia um challenge na validação da URL do webhook
+  // https://developer.monday.com/api-reference/reference/webhooks
+  if (isMondayChallenge(payload)) {
+    return NextResponse.json({ challenge: payload.challenge }, { status: 200 });
   }
 
   try {
