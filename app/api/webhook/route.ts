@@ -12,12 +12,13 @@ function isMondayChallenge(
     return false;
   }
 
-  const keys = Object.keys(payload);
+  const record = payload as Record<string, unknown>;
+  const keys = Object.keys(record);
 
   return (
     keys.length === 1 &&
     keys[0] === "challenge" &&
-    typeof payload.challenge === "string"
+    typeof record.challenge === "string"
   );
 }
 
