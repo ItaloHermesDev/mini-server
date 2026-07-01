@@ -99,6 +99,28 @@ export async function saveWebhookPayload(payload: unknown): Promise<number> {
   return (result as mysql.ResultSetHeader).insertId;
 }
 
+export type WebhookEventRow = {
+  id: number;
+  payload: unknown;
+  created_at: Date;
+};
+
+export async function getWebhookEvents(limit = 50): Promise<WebhookEventRow[]> {
+  await ensureWebhookTable();
+
+  const db = getPool();
+  const [rows] = await db.execute(
+    "SELECT id, payload, created_at FROM webhook_events ORDER BY id DESC LIMIT ?",
+    [limit]
+  );
+
+  return (rows as WebhookEventRow[]).map((row) => ({
+    ...row,
+    payload:
+      typeof row.payload === "string" ? JSON.parse(row.payload) : row.payload,
+  }));
+}
+
 export async function testDbConnection(): Promise<{
   ok: true;
   eventCount: number;
