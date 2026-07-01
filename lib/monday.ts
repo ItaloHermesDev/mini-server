@@ -52,7 +52,10 @@ export type MondayMovePulseEvent = MondayEventBase & {
   };
 };
 
-export type MondayEvent = MondayCreatePulseEvent | MondayMovePulseEvent;
+export type MondayEvent =
+  | MondayCreatePulseEvent
+  | MondayMovePulseEvent
+  | (MondayEventBase & { type: string });
 
 export type WebhookPayload =
   | { challenge: string }
@@ -192,11 +195,13 @@ export function parseWebhookPayload(
     };
   }
 
+  const eventType = event.type ?? "unknown";
+
   return {
     ...base,
     kind: "other",
-    title: EVENT_LABELS[event.type] ?? event.type,
-    subtitle: event.type,
+    title: EVENT_LABELS[eventType] ?? eventType,
+    subtitle: eventType,
     columnTags: [],
   };
 }
