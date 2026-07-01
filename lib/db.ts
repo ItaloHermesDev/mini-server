@@ -57,6 +57,34 @@ export async function ensureWebhookTable(): Promise<void> {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `);
+
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS webhook_request_logs (
+      id INT AUTO_INCREMENT PRIMARY KEY,
+      kind VARCHAR(20) NOT NULL,
+      payload JSON NULL,
+      user_agent VARCHAR(512) NULL,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+}
+
+export async function logWebhookRequest(
+  kind: "challenge" | "event" | "invalid_json",
+  payload: unknown,
+  userAgent: string | null
+): Promise<void> {
+  await ensureWebhookTable();
+
+  const db = getPool();
+  await db.execute(
+    "INSERT INTO webhook_request_logs (kind, payload, user_agent) VALUES (?, ?, ?)",
+    [
+      kind,
+      payload === undefined ? null : JSON.stringify(payload),
+      userAgent,
+    ]
+  );
 }
 
 export async function saveWebhookPayload(payload: unknown): Promise<number> {
@@ -69,4 +97,42 @@ export async function saveWebhookPayload(payload: unknown): Promise<number> {
   );
 
   return (result as mysql.ResultSetHeader).insertId;
+}
+
+export async function testDbConnection(): Promise<{
+  ok: true;
+  eventCount: number;
+  requestCount: number;
+  host: string;
+  database: string;
+}> {
+  await ensureWebhookTable();
+  const config = getDbConfig();
+  const db = getPool();
+
+  await db.execute("SELECT 1");
+
+  const [rows] = await db.execute(
+    "SELECT COUNT(*) AS eventCount FROM webhook_events"
+  );
+
+  const [logRows] = await db.execute(
+    "SELECT COUNT(*) AS requestCount FROM webhook_request_logs"
+  );
+
+  const eventCount = Number(
+    (rows as Array<{ eventCount: number }>)[0]?.eventCount ?? 0
+  );
+
+  const requestCount = Number(
+    (logRows as Array<{ requestCount: number }>)[0]?.requestCount ?? 0
+  );
+
+  return {
+    ok: true,
+    eventCount,
+    requestCount,
+    host: config.host,
+    database: config.database,
+  };
 }
